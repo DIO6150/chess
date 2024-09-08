@@ -27,7 +27,7 @@ void mcg_InitRenderPool(RenderPool* pool, int material, MeshType type)
     glGenBuffers(1, &pool->vbo);
     glGenBuffers(1, &pool->ebo);
     glGenBuffers(1, &pool->dibo);
-    printf("dibo : %d\n", pool->dibo);
+    //printf("dibo : %d\n", pool->dibo);
 
     glBindBuffer(GL_ARRAY_BUFFER, pool->vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pool->ebo);
@@ -135,7 +135,7 @@ void mcg_FreeRenderer(Renderer* renderer)
 
 static void fill_data(Mesh* mesh, int vbo, int vbo_offset, int ebo, int ebo_offset)
 {
-    printf("fill data\n");
+    //printf("fill data\n");
 
     if (mesh->type == CHESS_MESH_TYPE_2D)
     {
@@ -203,7 +203,7 @@ void mcg_PushModel(Renderer* renderer, Mesh* object, int material)
 
 DrawCommand* mcg_CreateDrawCommands(RenderPool* pool, int* count)
 {
-    printf("create draw commands\n");
+    //printf("create draw commands\n");
     //printf("DrawCommand Begin\n");
     DrawCommand* temp;
 
@@ -249,7 +249,7 @@ void mcg_Render(Renderer* renderer)
 
     //printf("Render Begin\n");
 
-    printf("Render\n");
+    //printf("Render\n");
     for (int i = 0; i < renderer->count; i++)
     {
 
@@ -266,8 +266,8 @@ void mcg_Render(Renderer* renderer)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->batches[i].ebo);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, renderer->batches[i].dibo);
 
-        printf("Bind draw indirect\n");
         glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, count * sizeof(DrawCommand), cmd);
+        /*printf("Bind draw indirect\n");
 
         __attribute__((unused))int size_dc = sizeof(DrawCommand);
         __attribute__((unused))int size_cmd = sizeof(*cmd);
@@ -275,8 +275,6 @@ void mcg_Render(Renderer* renderer)
         printf("draw : dibo : %d ; count : %d ; i : %d ; batches : %d\n", renderer->batches[i].dibo, count, i, renderer->count);
 
         GLint boundBuffer;
-
-        #include "core/utils.h"
 
         fflush(stdout);
 
@@ -289,7 +287,9 @@ void mcg_Render(Renderer* renderer)
         glGetIntegerv(GL_DRAW_INDIRECT_BUFFER_BINDING, &boundBuffer);
         printf("Currently bound DRAW INDIRECT buffer: %d\n", boundBuffer);
 
-        /*glGetIntegerv(GL_MAX_VERTEX_ATTRIB_STRIDE, &boundBuffer);
+        fflush(stdout);
+
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIB_STRIDE, &boundBuffer);
         printf("Currently max vertex attrib stride: %d\n", boundBuffer);
 
         printf("Size of int %lld and of glint %lld\n", sizeof(int), sizeof(GLint));
@@ -312,7 +312,7 @@ void mcg_Render(Renderer* renderer)
         renderer->batches[i].vbo_offset = 0;
         renderer->batches[i].ebo_offset = 0;
 
-        printf("further\n");
+        //printf("further\n");
         free(cmd);
     }
     //printf("Render End\n");

@@ -342,14 +342,13 @@ void mcg_GameLoop(Game* game)
         while (game->running)
         {
             glfwPollEvents();
-            
+
             if (glfwGetKey(game->window, GLFW_KEY_ESCAPE) == GLFW_PRESS) game->running = 0;
 
             for (int i = 0; i < game->n_meshes; i++)
             {
                 mcg_PushModel(game->renderer, game->meshes + i, 0);
             }
-
 
             glClear(GL_COLOR_BUFFER_BIT);
 
