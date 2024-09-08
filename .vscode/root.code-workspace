@@ -1,0 +1,26 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"board.h": "c",
+			"stdlib.h": "c",
+			"utils.h": "c",
+			"piece_check.h": "c",
+			"piece_behavior.h": "c",
+			"piece.h": "c",
+			"glfw3.h": "c",
+			"glew.h": "c",
+			"string": "cpp",
+			"board2d.h": "c",
+			"model.h": "c",
+			"renderer.h": "c",
+			"glad.h": "c",
+			"algorithm": "c",
+			"mesh.h": "c"
+		}
+	}
+}

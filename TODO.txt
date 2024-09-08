@@ -1,0 +1,10 @@
++ vetical moves need to be swaped when whites are playing
++ players can only moved pieces of their own color
++ pawn can move 2 spaces when they were not played before
++ pawn can capture a piece diagonally
++ pieces can't traverse through another piece except the knight
++ pieces can't go to a space already occupied by a piece of the same color
++ castle (didn't test)
++ check
++ checkmate
++ pawn promotion
