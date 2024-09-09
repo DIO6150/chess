@@ -16,6 +16,8 @@ void mcg_InitRenderPool(RenderPool* pool, int material, MeshType type)
     pool->vbo = 0;
     pool->ebo = 0;
     pool->dibo = 0;
+    pool->matrix_ssbo = 0;
+    pool->textures_ssbo = 0;
 
     pool->vbo_offset = 0;
     pool->ebo_offset = 0;
@@ -27,7 +29,7 @@ void mcg_InitRenderPool(RenderPool* pool, int material, MeshType type)
     glGenBuffers(1, &pool->vbo);
     glGenBuffers(1, &pool->ebo);
     glGenBuffers(1, &pool->dibo);
-    //printf("dibo : %d\n", pool->dibo);
+    glGenBuffers(1, &pool->matrix_ssbo);
 
     glBindBuffer(GL_ARRAY_BUFFER, pool->vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pool->ebo);
@@ -44,9 +46,12 @@ void mcg_InitRenderPool(RenderPool* pool, int material, MeshType type)
 
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * MAX_VERTEX_PER_MESH * BATCH_SIZE, NULL, GL_DYNAMIC_DRAW);
     glBufferData(GL_DRAW_INDIRECT_BUFFER, BATCH_SIZE * sizeof(DrawCommand), NULL, GL_DYNAMIC_DRAW);
-    
-    // TODO : have a dedicated layout system later
 
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, pool->matrix_ssbo);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, BATCH_SIZE * sizeof(mat4), (const void*)0, GL_DYNAMIC_STORAGE_BIT);
+
+
+    // TODO : have a dedicated layout system later
     int layouts[2][4] = {
         { 2, 3, 2 },
         { 3, 3, 2, 3 }
@@ -76,11 +81,6 @@ void mcg_InitRenderPool(RenderPool* pool, int material, MeshType type)
     glBindVertexArray(0);
 }
 
-RenderPool* mcg_CreateRenderPool()
-{
-    return malloc(sizeof(RenderPool));
-}
-
 void mcg_FreeRenderPool(RenderPool* pool)
 {
     free(pool);
@@ -89,14 +89,36 @@ void mcg_FreeRenderPool(RenderPool* pool)
 Renderer* mcg_CreateRenderer()
 {
     Renderer* temp = malloc(sizeof(Renderer));
+
+    if (temp == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+
+
     temp->count = 0;
 
+    // TODO : Difference between 3d and 2d shaders
+
     const char *vertexShaderSource =
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
+    "#version 460 core\n"
+    "layout (location = 0) in vec2 aPos;\n"
+    "layout (location = 1) in vec3 aColor;\n"
+    "layout (location = 2) in vec2 aTexCoords;\n"
+    "layout(std430, binding = 0) buffer u_ModelMatrices\n"
+    "{\n"
+    "   mat4 matrices[];\n"
+    "};\n"
+    "out vec3 oColor;\n"
+    "out vec2 oTexCoords;\n"
     "void main()\n"
     "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "   vec4 pos = vec4(aPos.x, aPos.y, 0.0, 1.0) * matrices[gl_DrawID];\n"
+    "   pos.z = 0.0;\n"
+    "   pos.w = 1.0;\n"
+    "   gl_Position = pos;\n"
+    "   oColor = aColor;\n"
+    "   oTexCoords = aTexCoords;\n"
     "}\0";
 
     unsigned int vertexShader;
@@ -105,12 +127,25 @@ Renderer* mcg_CreateRenderer()
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
     glCompileShader(vertexShader);
 
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+
+    if (!success) {
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        printf("%s\n", infoLog);
+    }
+
     const char *fragmentShaderSource =
-    "#version 330 core\n"
+    "#version 460 core\n"
+    "in vec2 oTexCoords;\n"
+    "in vec3 oColor;\n"
+    "uniform sampler2D texture_0;\n"
     "out vec4 FragColor;\n"
     "void main()\n"
     "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "   vec4 tex_color = texture(texture_0, oTexCoords);\n"
+    "   FragColor = tex_color * vec4(oColor, 1.0f);\n"
     "}\0";
 
     unsigned int fragmentShader;
@@ -119,11 +154,25 @@ Renderer* mcg_CreateRenderer()
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
     glCompileShader(fragmentShader);
 
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+
+    if (!success) {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        printf("%s\n", infoLog);
+    }
+
     temp->shader = glCreateProgram();
 
     glAttachShader(temp->shader, vertexShader);
     glAttachShader(temp->shader, fragmentShader);
-    glLinkProgram( temp->shader);
+    glLinkProgram(temp->shader);
+
+    glGetProgramiv(temp->shader, GL_LINK_STATUS, &success);
+
+    if (!success) {
+        glGetProgramInfoLog(temp->shader, 512, NULL, infoLog);
+        printf("%s\n", infoLog);
+    }
 
     return temp;
 }
@@ -135,12 +184,9 @@ void mcg_FreeRenderer(Renderer* renderer)
 
 static void fill_data(Mesh* mesh, int vbo, int vbo_offset, int ebo, int ebo_offset)
 {
-    //printf("fill data\n");
-
     if (mesh->type == CHESS_MESH_TYPE_2D)
     {
         glNamedBufferSubData(vbo, sizeof(Vertices2D) * vbo_offset, sizeof(Vertices2D) * mesh->n_vertices, mesh->vertices.v2D);
-
     }
     else if (mesh->type == CHESS_MESH_TYPE_3D)
     {
@@ -203,11 +249,15 @@ void mcg_PushModel(Renderer* renderer, Mesh* object, int material)
 
 DrawCommand* mcg_CreateDrawCommands(RenderPool* pool, int* count)
 {
-    //printf("create draw commands\n");
-    //printf("DrawCommand Begin\n");
     DrawCommand* temp;
 
     temp = malloc(sizeof(DrawCommand) * pool->size);
+
+    if (temp == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+
 
     *count = 0;
 
@@ -217,7 +267,6 @@ DrawCommand* mcg_CreateDrawCommands(RenderPool* pool, int* count)
 
     base_vertex = 0;
     index = 0;
-
 
     // TODO : doesn't into account instancing
     for (int i = 0; i < pool->size; i++)
@@ -230,14 +279,12 @@ DrawCommand* mcg_CreateDrawCommands(RenderPool* pool, int* count)
         temp[i].baseVertex = base_vertex;
         temp[i].baseInstance = 0;
 
-        index += vertex_count;
+        index += pool->objects[i]->n_indices;
 
         base_vertex += pool->objects[i]->n_vertices;
 
-        //printf("Count : %d\n", *count);
         (*count)++;
     }
-    //printf("DrawCommand End\n");
 
     return temp;
 }
@@ -247,18 +294,51 @@ void mcg_Render(Renderer* renderer)
     DrawCommand *cmd;
     int count;
 
-    //printf("Render Begin\n");
+    float *model_matrices;
 
-    //printf("Render\n");
+    unsigned int *textures;
+
     for (int i = 0; i < renderer->count; i++)
     {
 
-        //printf("> Render Batch [%d]\n", i);
-
         cmd = mcg_CreateDrawCommands(&renderer->batches[i], &count);
-        //printf("    > Batch Count [%d]\n", count);
+
+        model_matrices = malloc(sizeof(float) * 16 * count);
+
+        if (model_matrices == NULL)
+        {
+            exit(EXIT_FAILURE);
+        }
+
+        textures = malloc(sizeof(unsigned int) * count);
+
+        if (textures == NULL)
+        {
+            exit(EXIT_FAILURE);
+        }
+
+        for (int j = 0; j < count; j++)
+        {
+
+            if (renderer->batches[i].objects[j]->tex)
+            {
+                textures[j] = renderer->batches[i].objects[j]->tex->object;
+            }
+            else
+            {
+                textures[j] = 0;
+            }
+
+            for (int k = 0; k < 16; k++)
+            {
+                model_matrices[k + j * 16] = renderer->batches[i].objects[j]->model_matrix[k % 4][k / 4];
+            }
+        }
         
         glUseProgram(renderer->shader);
+
+        //glGetUniformLocation(renderer->shader, "model");
+        //glUniformMatrix4fv(renderer->shader, 1, 0, renderer->batches[i].);
 
         glBindVertexArray(renderer->batches[i].vao);
 
@@ -266,37 +346,25 @@ void mcg_Render(Renderer* renderer)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->batches[i].ebo);
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, renderer->batches[i].dibo);
 
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, renderer->batches[i].matrix_ssbo);
+		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, count * sizeof(mat4), model_matrices);
+
         glBufferSubData(GL_DRAW_INDIRECT_BUFFER, 0, count * sizeof(DrawCommand), cmd);
-        /*printf("Bind draw indirect\n");
 
-        __attribute__((unused))int size_dc = sizeof(DrawCommand);
-        __attribute__((unused))int size_cmd = sizeof(*cmd);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textures[1]);
 
-        printf("draw : dibo : %d ; count : %d ; i : %d ; batches : %d\n", renderer->batches[i].dibo, count, i, renderer->count);
+        int location = glGetUniformLocation(renderer->shader, "texture_0");
 
-        GLint boundBuffer;
+        if (location < 0)
+        {
+            printf("Uniform was not found.");
+        }
 
-        fflush(stdout);
+        glUniform1ui(location, textures[1]);
 
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &boundBuffer);
-        printf("Currently bound ARRAY buffer: %d\n", boundBuffer);
-
-        glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &boundBuffer);
-        printf("Currently bound ELEMENT buffer: %d\n", boundBuffer);
-
-        glGetIntegerv(GL_DRAW_INDIRECT_BUFFER_BINDING, &boundBuffer);
-        printf("Currently bound DRAW INDIRECT buffer: %d\n", boundBuffer);
-
-        fflush(stdout);
-
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIB_STRIDE, &boundBuffer);
-        printf("Currently max vertex attrib stride: %d\n", boundBuffer);
-
-        printf("Size of int %lld and of glint %lld\n", sizeof(int), sizeof(GLint));
-
-        glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &boundBuffer);
-        printf("Buffer size: %d\n", boundBuffer);
-        */
+        //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, renderer->batches[i].textures_ssbo);
+		//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, count * sizeof(int), textures);
 
         glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL, count, 0);
 
@@ -312,8 +380,8 @@ void mcg_Render(Renderer* renderer)
         renderer->batches[i].vbo_offset = 0;
         renderer->batches[i].ebo_offset = 0;
 
-        //printf("further\n");
+        free(model_matrices);
+        free(textures);
         free(cmd);
     }
-    //printf("Render End\n");
 }

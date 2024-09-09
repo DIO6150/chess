@@ -1,9 +1,11 @@
 #ifndef H_CHESS_GAME
 #define H_CHESS_GAME
 
-#include "game/board.h"
 
 #include "core/renderer.h"
+#include "core/texture.h"
+
+#include "game/board.h"
 
 #include "vendor/glad/glad.h"
 #include "vendor/GLFW/glfw3.h"
@@ -33,6 +35,8 @@ typedef struct Game
     Mesh *meshes;
     int n_meshes;
 
+    Texture *textures;
+    int n_textures;
 } Game;
 
 Game* mcg_CreateGame();

@@ -27,6 +27,12 @@ PositionArray mcg_CreatePositionArray(int size)
     PositionArray array;
 
     array.array = malloc(sizeof(Position) * size);
+
+    if (array.array == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+
     array.size = size;
     array.n = 0;
 

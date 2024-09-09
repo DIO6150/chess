@@ -1,7 +1,7 @@
 #ifndef H_CHESS_PIECE
 #define H_CHESS_PIECE
 
-typedef enum Type
+typedef enum
 {   
     CHESS_TYPE_PAWN = 0,
     CHESS_TYPE_ROOK = 1,
@@ -12,7 +12,7 @@ typedef enum Type
     CHESS_TYPE_EMPTY = 6
 } Type;
 
-typedef enum Color
+typedef enum
 {
     CHESS_COLOR_WHITE = 0,
     CHESS_COLOR_BLACK = 1,

@@ -12,12 +12,28 @@ Board *mcg_CreateBoard()
     
     board = (Board*) malloc( sizeof(Board) );
 
+    if (board == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+
     board->array = (Piece **) malloc( sizeof(Piece *) * 8);
+
+    if (board->array == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+
     board->size = 8;
 
     for (int i = 0; i < 8; i++)
     {
         board->array[i] = (Piece *) malloc( sizeof(Piece) * 8);
+
+        if (board->array[i] == NULL)
+        {
+            exit(EXIT_FAILURE);
+        }
 
         for (int j = 0; j < 8; j++)
         {

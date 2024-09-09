@@ -2,7 +2,7 @@
 #define H_CHESS_RENDERER
 
 #define BATCH_SIZE 100
-#define MAX_VERTEX_PER_MESH 100
+#define MAX_VERTEX_PER_MESH 512
 #define MAX_BATCH 16
 
 #include "core/mesh.h"
@@ -27,6 +27,8 @@ typedef struct
     unsigned int vbo;
     unsigned int ebo;
     unsigned int dibo;
+    unsigned int matrix_ssbo;
+    unsigned int textures_ssbo;
 
     int vbo_offset;
     int ebo_offset;
@@ -43,7 +45,6 @@ typedef struct
 
 } Renderer;
 
-RenderPool* mcg_CreateRenderPool();
 void mcg_InitRenderPool(RenderPool* pool, int material, MeshType mode);
 void mcg_FreeRenderPool(RenderPool* pool);
 

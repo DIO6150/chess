@@ -1,0 +1,1 @@
+gcc -g src/*.c includes/vendor/glad/glad.c includes/vendor/stb_image/stb_image.c -Iincludes -Llibs -lglfw3dll -lopengl32 -lgdi32 -luser32 -lkernel32 -lcglm.dll -Werror -Wextra -Wall -o bin/Chess.exe

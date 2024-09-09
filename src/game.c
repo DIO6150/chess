@@ -3,12 +3,15 @@
 #include "game/board.h"
 #include "game/game.h"
 #include "game/piece_check.h"
+#include "game/graphics/board2D.h"
+#include "game/graphics/piece2D.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
 // thanks to OutofBound answer in https://stackoverflow.com/questions/60486285/gldebugmessagecallback-doesnt-get-called-despite-of-error
-static char* error_description(GLenum err) {
+static char* error_description(GLenum err)
+{
     switch (err) {
     case GL_NO_ERROR:
         return "GL_NO_ERROR: No error has been recorded. The value of this symbolic constant is guaranteed to be 0. ";
@@ -33,21 +36,86 @@ static char* error_description(GLenum err) {
     }
 }
 
-void framebuffer_size_callback(__attribute__((unused))GLFWwindow* m_Window, int width, int height) {
+void framebuffer_size_callback(__attribute__((unused))GLFWwindow* m_Window, int width, int height)
+{
     glViewport(0, 0, width, height);
 }
 
-void message_callback(__attribute__((unused))GLenum source, GLenum type, GLuint id, GLenum severity, __attribute__((unused))GLsizei length, const GLchar* message, __attribute__((unused))const void* userParam) {
+void message_callback(__attribute__((unused))GLenum source, GLenum type, GLuint id, GLenum severity, __attribute__((unused))GLsizei length, const GLchar* message, __attribute__((unused))const void* userParam)
+{
     printf("Severity : %d, Type : %d, ID : %d\n", severity, type, id);
     printf("%s\n", error_description(type));
     printf("%s\n", message);
 }
 
+static void create_render_context(Game *game)
+{
+    if (!glfwInit())
+    {
+        mcg_ClearGame(game);
+        return;
+    }
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+
+    GLFWmonitor* monitor;
+
+    if (game->fullscreen)
+    {
+        int count;
+        GLFWmonitor** monitors = glfwGetMonitors(&count);
+        
+        if (count != 0) {
+            monitor = *monitors;
+        }
+    }
+    else
+    {
+        monitor = NULL;
+    }
+
+    game->window = glfwCreateWindow(900, 900, "Chess", monitor, NULL);
+
+    glfwMakeContextCurrent(game->window);
+
+    // we load glad
+    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+    printf("GL %d.%d\n", GLVersion.major, GLVersion.minor);
+
+    // size of the rendering m_Window
+    glViewport(0, 0, 900, 900);
+
+    // set the framebuffer resize callback
+    glfwSetFramebufferSizeCallback(game->window, framebuffer_size_callback);
+
+    glClearColor(0.2f, 0.5f, 0.7f, 1.0f);
+
+    // glEnable(GL_DEPTH_TEST);
+    // glDepthFunc(GL_LESS);
+    // glCullFace(GL_FRONT);
+    // glFrontFace(GL_CW);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Enable debug output
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(message_callback, 0);
+    glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, NULL, GL_TRUE);
+}
 
 Game* mcg_CreateGame()
 {
     Game* game;
     game = (Game *) malloc(sizeof(Game));
+
+    if (game == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
 
     game->type = GAMETYPE_2D;
     game->board = mcg_CreateBoard();
@@ -60,83 +128,6 @@ Game* mcg_CreateGame()
     game->window = NULL;
     game->fullscreen = 0;
     game->renderer = NULL;
-
-    if (game->type == GAMETYPE_2D)
-    {
-        if (!glfwInit()){
-            mcg_ClearGame(game);
-            return NULL;
-        }
-
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
-
-        GLFWmonitor* monitor;
-
-        if (game->fullscreen)
-        {
-            int count;
-            GLFWmonitor** monitors = glfwGetMonitors(&count);
-            
-            if (count != 0) {
-                monitor = *monitors;
-            }
-        }
-        else
-        {
-            monitor = NULL;
-        }
-
-        game->window = glfwCreateWindow(900, 900, "Chess", monitor, NULL);
-
-        glfwMakeContextCurrent(game->window);
-
-        // we load glad
-        gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-        printf("GL %d.%d\n", GLVersion.major, GLVersion.minor);
-
-        // size of the rendering m_Window
-        glViewport(0, 0, 900, 900);
-
-        // set the framebuffer resize callback
-        glfwSetFramebufferSizeCallback(game->window, framebuffer_size_callback);
-
-        glClearColor(0.2f, 0.5f, 0.7f, 1.0f);
-
-        // glEnable(GL_DEPTH_TEST);
-        // glDepthFunc(GL_LESS);
-        // glCullFace(GL_FRONT);
-        // glFrontFace(GL_CW);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        // Enable debug output
-        glEnable(GL_DEBUG_OUTPUT);
-        glDebugMessageCallback(message_callback, 0);
-        glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, NULL, GL_TRUE);
-
-        game->renderer = mcg_CreateRenderer();
-
-        game->meshes = malloc(sizeof(Mesh));
-        game->n_meshes = 1;
-
-        Vertices2D vertices[4] = {
-        {-0.25,  0.25, 1, 0, 0, 0, 1},
-        { 0.25,  0.25, 0, 1, 0, 1, 1},
-        { 0.25, -0.25, 0, 0, 1, 1, 0},
-        {-0.25, -0.25, 1, 0, 1, 0, 0}
-        };
-
-        int indices[6] = {
-            0, 1, 2, 2, 3, 0
-        };
-
-        game->meshes[0] = mcg_CreateMesh2D(vertices, 4, indices, 6);
-
-    }
 
     /*Piece tab[8][8] = {
         { {CHESS_TYPE_ROOK, CHESS_COLOR_BLACK, 0}, {CHESS_TYPE_KNIGHT, CHESS_COLOR_BLACK, 0}, {CHESS_TYPE_BISHOP, CHESS_COLOR_BLACK, 0}, {CHESS_TYPE_QUEEN, CHESS_COLOR_BLACK, 0}, {CHESS_TYPE_EMPTY, CHESS_COLOR_NONE, 0}, {CHESS_TYPE_BISHOP, CHESS_COLOR_BLACK, 0}, {CHESS_TYPE_KNIGHT, CHESS_COLOR_BLACK, 0}, {CHESS_TYPE_ROOK, CHESS_COLOR_BLACK, 0} },
@@ -156,6 +147,87 @@ Game* mcg_CreateGame()
             mcg_SetPiece(game->board, tab[j][i], i, j);
         }
     }*/
+
+    if (game->type == GAMETYPE_2D)
+    {
+        // RENDER CONTEXT SETUP //
+
+        create_render_context(game);
+
+        // GAME SETUP //
+
+        game->renderer = mcg_CreateRenderer();
+
+        game->textures = malloc(sizeof(Texture) * 1);
+
+        if (game->textures == NULL)
+        {
+            exit(EXIT_FAILURE);
+        }
+
+        game->textures[0] = mcg_LoadTexture("assets/chess.png");
+        game->n_textures++;
+
+
+        game->meshes = malloc(sizeof(Mesh) * 33);
+
+        if (game->meshes == NULL)
+        {
+            exit(EXIT_FAILURE);
+        }
+
+        game->meshes[0] = mcg_CreateBoard2D();
+        game->n_meshes = 1;
+
+        float offset_x, offset_y;
+        float offset_dx, offset_dy;
+
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                Type type = mcg_GetPiece(game->board, i, j).type;
+                Color color = mcg_GetPiece(game->board, i, j).color;
+
+                if (type == CHESS_TYPE_EMPTY)
+                    continue;
+
+                game->meshes[game->n_meshes] = mcg_CreatePiece2D(mcg_GetPiece(game->board, i, j).type,
+                                                                 mcg_GetPiece(game->board, i, j).color);
+
+                glm_translate(game->meshes[game->n_meshes].model_matrix, (vec3){ 14.0f - i * 2, 14.0f - j * 2, 0.0f });
+
+                mcg_AddTexture(game->meshes + game->n_meshes, game->textures);
+
+                offset_x = (type * 128) / game->textures[0].width;
+                offset_y = (color * 128) / game->textures[0].height;
+
+                offset_dx = offset_x + 128;
+                offset_dy = offset_y + 128;
+
+                game->meshes[game->n_meshes].vertices.v2D[0].u = offset_x;
+                game->meshes[game->n_meshes].vertices.v2D[0].v = offset_dy;
+
+                game->meshes[game->n_meshes].vertices.v2D[1].u = offset_dx;
+                game->meshes[game->n_meshes].vertices.v2D[1].v = offset_dy;
+
+                game->meshes[game->n_meshes].vertices.v2D[2].u = offset_dx;
+                game->meshes[game->n_meshes].vertices.v2D[2].v = offset_y;
+
+                game->meshes[game->n_meshes].vertices.v2D[3].u = offset_x;
+                game->meshes[game->n_meshes].vertices.v2D[3].v = offset_y;
+                    
+                game->n_meshes++;
+            }
+        }
+
+        for (int i = 0; i < game->n_meshes; i++)
+        {
+            glm_translate(game->meshes[i].model_matrix, (vec3){ -8.0f, -8.0f, 0.0f });
+            glm_mat4_scale(game->meshes[i].model_matrix, 0.1);
+        }
+
+    }
 
     return game;
 }
@@ -367,8 +439,14 @@ void mcg_ClearGame(Game* game)
     for (int i = 0; i < game->n_meshes; i++)
     {
         mcg_FreeMesh(game->meshes + i);
-        free(game->meshes + i);
     }
+    free(game->meshes);
+
+    for (int i = 0; i < game->n_textures; i++)
+    {
+        mcg_FreeTexture(game->textures + i);
+    }
+    free(game->textures);
 
     mcg_FreeRenderer(game->renderer);
     free(game);
