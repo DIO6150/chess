@@ -1,0 +1,1 @@
+gcc -g $(env PKG_CONFIG_PATH="libs/platform/linux"$PKG_CONFIG_PATH pkg-config --cflags glfw3) src/*.c includes/vendor/glad/glad.c includes/vendor/stb_image/stb_image.c -Iincludes -Iincludes/vendor -L"libs/platform/linux" -lglfw3 -lcglm -Werror -Wextra -Wall -o bin/Chess.out $(env PKG_CONFIG_PATH="libs/platform/linux"$PKG_CONFIG_PATH pkg-config --static --libs glfw3)
