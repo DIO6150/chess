@@ -43,6 +43,7 @@ typedef struct
     unsigned int dibo; // Draw Indirect Buffer
 
     unsigned int matrix_ssbo; // Matrix Shader Storage Buffer
+
 } Batch;
 
 // Functions
@@ -67,11 +68,28 @@ typedef struct
 {
     Batch* batches[MGE_BATCH_MAX_COUNT];
     int batch_count;
+
+    mat4 projection;
+    mat4 view;
+
+    Texture2D** textures;
+    int textures_capacity;
+    int texture_count;
+
+    TextureObject* atlas;
+
+    // TODO : Add a camera field
+    vec3 camera_up;
+    vec3 camera_front;
+    vec3 camera_position;
 } Renderer;
 
 // Functions
 int mgeRendererInit(Renderer** _out_renderer);
 int mgeRendererFree(Renderer* _in_renderer);
+
+int mgeAddTexture(Renderer* _in_renderer, Texture2D* _in_texture);
+int mgeCreateAtlas(Renderer* _in_renderer);
 
 int mgeRendererSetBatchShader(Renderer* _in_renderer, int _in_batch_id, Shader* _in_shader);
 

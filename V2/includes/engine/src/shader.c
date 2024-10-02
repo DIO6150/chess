@@ -128,21 +128,7 @@ int mgeShaderCompile(Shader* _in_shader)
 
     //const char* vertex_source = _in_shader->vertex_source;
 
-    const char* vertex_source = "#version 460 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "layout (location = 1) in vec3 aColor;\n"
-    "layout(std430, binding = 0) buffer u_ModelMatrices\n"
-    "{\n"
-    "   mat4 matrices[];\n"
-    "};\n"
-    "out vec3 oColor;\n"
-    "void main()\n"
-    "{\n"
-    "   vec4 pos = vec4(aPos, 1.0) * matrices[gl_DrawID];\n"
-    "   pos.w = 1.0;\n"
-    "   gl_Position = pos;\n"
-    "   oColor = aColor;\n"
-    "}\0";
+    const char* vertex_source = _in_shader->vertex_source;
 
     const char* fragment_source = _in_shader->fragment_source;
 

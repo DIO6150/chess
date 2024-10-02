@@ -42,9 +42,10 @@ int mgeBatchInit(int _in_batch_id, Batch** _out_batch)
     glNamedBufferData((*_out_batch)->dibo, 1, NULL, GL_STREAM_DRAW);
     glNamedBufferData((*_out_batch)->matrix_ssbo, 1, NULL, GL_STREAM_DRAW);
 
+    // TODO : Allow custom vertex
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0));
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
 
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
@@ -91,6 +92,7 @@ int mgeBatchBindBuffers(Batch* _in_batch)
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _in_batch->dibo);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, _in_batch->matrix_ssbo);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _in_batch->matrix_ssbo);
 
     return (1);
 }
@@ -204,10 +206,16 @@ int mgeBatchPushMesh(Batch* _in_batch, Mesh* _in_mesh)
     glNamedBufferSubData(_in_batch->dibo, _in_batch->mesh_count * sizeof(DrawCommand), sizeof(DrawCommand), &command);
 
     // Matrix Data
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _in_batch->matrix_ssbo);
-    glNamedBufferSubData(_in_batch->matrix_ssbo, _in_batch->mesh_count * sizeof(mat4), sizeof(mat4), _in_mesh->model_matrix);
 
-    // Texture Data
+    mat4 model_matrix;
+
+    glm_mat4_mul(_in_mesh->rotation_matrix, _in_mesh->scaling_matrix, model_matrix);
+    glm_mat4_mul(model_matrix, _in_mesh->translation_matrix, model_matrix);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _in_batch->matrix_ssbo);
+    glNamedBufferSubData(_in_batch->matrix_ssbo, _in_batch->mesh_count * sizeof(mat4), sizeof(mat4), model_matrix);
+
+    // Texture2D Data
     // nothing to upload
 
     _in_batch->mesh_count++;
@@ -249,6 +257,28 @@ int mgeRendererInit(Renderer** _out_renderer)
 
     (*_out_renderer)->batch_count = 0;
 
+    (*_out_renderer)->textures = NULL;
+    (*_out_renderer)->textures_capacity = 0;
+    (*_out_renderer)->texture_count = 0;
+
+    (*_out_renderer)->atlas = malloc(sizeof(Texture2D));
+
+    if (!(*_out_renderer)->atlas)
+    {
+        printf("%s(%s) : Atlas couldn't be initialized.\n", __func__, __FILE__);
+        (*_out_renderer)->atlas = 0;
+    }
+
+    // rounded value of 45° in radians
+    glm_perspective(0.785398f, 1.0f, 0.1f, 100.0f, (*_out_renderer)->projection);
+
+    glm_vec3_copy((vec3) { 0.0f, 0.0f, 3.0f }, (*_out_renderer)->camera_position );
+    glm_vec3_copy((vec3) { 0.0f, 0.0f, -1.0f }, (*_out_renderer)->camera_front );
+    glm_vec3_copy((vec3) { 0.0f, 1.0f, 0.0f }, (*_out_renderer)->camera_up );
+
+    glm_mat4_identity((*_out_renderer)->view);
+    glm_translate((*_out_renderer)->view, (vec3) {0.0f, 0.0f, -3.0f});
+
     return (1);
 }
 
@@ -266,6 +296,60 @@ int mgeRendererFree(Renderer* _in_renderer)
     }
 
     free(_in_renderer);
+
+    return (1);
+}
+
+int mgeAddTexture(Renderer* _in_renderer, Texture2D* _in_texture)
+{
+    if (!_in_renderer)
+    {
+        printf("%s(%s) : Renderer is NULL.\n", __func__, __FILE__);
+        return (0);
+    }
+
+    if (!_in_renderer->textures)
+    {
+        _in_renderer->textures = malloc(sizeof(Texture2D*));
+
+        if (!_in_renderer->textures)
+        {
+            printf("%s(%s) : Failed to allocate textures list memory.\n", __func__, __FILE__);
+            return (0);
+        }
+
+        _in_renderer->textures_capacity = 1;
+    }
+
+    if (_in_renderer->texture_count >= _in_renderer->textures_capacity)
+    {
+        Texture2D** temp = realloc(_in_renderer->textures, (_in_renderer->textures_capacity + 1) * sizeof(Texture2D*));
+
+        if (!temp)
+        {
+            printf("%s(%s) : Failed to reallocate textures list memory.\n", __func__, __FILE__);
+            return (0);
+        }
+
+        _in_renderer->textures = temp;
+        _in_renderer->textures_capacity++;
+    }
+
+    _in_renderer->textures[_in_renderer->texture_count] = _in_texture;
+    _in_renderer->texture_count++;
+
+    return (1);
+}
+
+int mgeCreateAtlas(Renderer* _in_renderer)
+{
+    if (!_in_renderer->atlas)
+    {
+        printf("%s(%s) : Atlas is NULL.\n", __func__, __FILE__);
+        return (0);
+    }
+
+
 
     return (1);
 }
@@ -356,6 +440,13 @@ int mgeRender(Renderer* _in_renderer)
         return (0);
     }
 
+    mat4 view;
+
+    vec3 pos_front_sum;
+    glm_vec3_add(_in_renderer->camera_front, _in_renderer->camera_position, pos_front_sum);
+
+    glm_lookat(_in_renderer->camera_position, pos_front_sum, _in_renderer->camera_up, view);
+
     for (int i = 0; i < _in_renderer->batch_count; i++)
     {
         if (!_in_renderer->batches[i])
@@ -377,7 +468,25 @@ int mgeRender(Renderer* _in_renderer)
         }
 
         mgeShaderUse(_in_renderer->batches[i]->shader);
+        int location;
 
+        location = glGetUniformLocation(_in_renderer->batches[i]->shader->program, "uProjection");
+        glUniformMatrix4fv(location, 1, GL_FALSE, *_in_renderer->projection);
+
+        location = glGetUniformLocation(_in_renderer->batches[i]->shader->program, "uView");
+        glUniformMatrix4fv(location, 1, GL_FALSE, *view);
+
+        /*
+        // for debugging
+        Vertex* __attribute__((unused)) vbo_ptr = (Vertex*) glMapNamedBuffer(_in_renderer->batches[i]->vbo, GL_READ_ONLY);
+        unsigned int* __attribute__((unused)) ebo_ptr = (unsigned int*) glMapNamedBuffer(_in_renderer->batches[i]->ebo, GL_READ_ONLY);
+        DrawCommand* __attribute__((unused)) dibo_ptr = (DrawCommand*) glMapNamedBuffer(_in_renderer->batches[i]->dibo, GL_READ_ONLY);
+        
+        glUnmapNamedBuffer(_in_renderer->batches[i]->vbo);
+        glUnmapNamedBuffer(_in_renderer->batches[i]->ebo);
+        glUnmapNamedBuffer(_in_renderer->batches[i]->dibo);
+        */
+       
         glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL, _in_renderer->batches[i]->mesh_count, 0);
 
         mgeShaderCancel();

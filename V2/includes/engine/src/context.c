@@ -60,7 +60,7 @@ int mgeContextInit(char* _in_name, int _in_width, int _in_height, Context** _out
     }
     printf("GL %d.%d\n", GLVersion.major, GLVersion.minor);
     
-    glViewport(0, 0, 900, 900);
+    glViewport(0, 0, _in_width, _in_height);
     
     glfwSetFramebufferSizeCallback((*_out_context)->window, framebuffer_size_callback);
     glClearColor(0.2f, 0.2f, 0.2f, 1.0f);

@@ -437,6 +437,12 @@ void mcg_Render(Renderer* renderer)
         //glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, renderer->batches[i].textures_ssbo);
 		//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, count * sizeof(int), textures);
 
+        //#include "vertices.h"
+
+        Vertices3D* __attribute__((unused)) vbo_ptr  =  (Vertices3D*) glMapNamedBuffer(renderer->batches[i].vbo, GL_READ_ONLY);
+
+        glUnmapNamedBuffer(renderer->batches[i].vbo);
+
         glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL, count, 0);
 
         glBindVertexArray(0);
