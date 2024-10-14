@@ -5,12 +5,14 @@
 #include "core/mesh.h"
 
 
-int mgeMeshInit(Vertex* _in_vertices, unsigned int* _in_indices, int _in_vertex_count, int _in_index_count, Mesh** _out_mesh, Texture* texture)
+int mgeMeshInit(unsigned int _in_index, Vertex* _in_vertices, unsigned int* _in_indices, int _in_vertex_count, int _in_index_count, Mesh** _out_mesh, Texture2D* texture)
 {
     *_out_mesh = (Mesh*) malloc(sizeof(Mesh));
 
     //(*_out_mesh)->vertices = _in_vertices;
     //(*_out_mesh)->indices = _in_indices;
+
+    (*_out_mesh)->index = _in_index;
 
     (*_out_mesh)->vertices = (Vertex*) malloc(sizeof(Vertex) * _in_vertex_count);
 

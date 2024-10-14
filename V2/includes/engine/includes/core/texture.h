@@ -19,6 +19,7 @@ typedef struct
 } Texture2D;
 
 int mgeTextureObjectInit(TextureObject** _out_texture_object);
+int mgeTextureObjectFree(TextureObject* _in_texture_object);
 
 int mgeTextureCreate(Texture2D** _out_texture);
 int mgeTextureFree(Texture2D* _in_texture);

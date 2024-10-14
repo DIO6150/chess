@@ -55,6 +55,7 @@ int mgeContextInit(char* _in_name, int _in_width, int _in_height, Context** _out
         glfwDestroyWindow((*_out_context)->window);
         free(*_out_context);
         glfwTerminate();
+        
         printf("%s(%s) : Failed to initialize glad.\n", __func__, __FILE__);
         return(0);
     }
@@ -64,8 +65,8 @@ int mgeContextInit(char* _in_name, int _in_width, int _in_height, Context** _out
     
     glfwSetFramebufferSizeCallback((*_out_context)->window, framebuffer_size_callback);
     glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
-    //glEnable(GL_DEPTH_TEST);
-    //glDepthFunc(GL_LESS);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
     //glCullFace(GL_FRONT);
     //glFrontFace(GL_CW);
     glEnable(GL_BLEND);

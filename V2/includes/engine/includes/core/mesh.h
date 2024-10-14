@@ -9,6 +9,8 @@
 
 typedef struct
 {
+    unsigned int index;
+
     Vertex* vertices;
     int vertex_count;
 
@@ -19,10 +21,10 @@ typedef struct
     mat4 rotation_matrix;
     mat4 scaling_matrix;
 
-    Texture* texture;
+    Texture2D* texture;
 } Mesh;
 
-int mgeMeshInit(Vertex* _in_vertices, unsigned int* _in_indices, int _in_vertex_count, int _in_index_count, Mesh** _out_mesh, Texture* texture);
+int mgeMeshInit(unsigned int _in_index, Vertex* _in_vertices, unsigned int* _in_indices, int _in_vertex_count, int _in_index_count, Mesh** _out_mesh, Texture2D* texture);
 int mgeMeshFree(Mesh* _in_mesh);
 
 int mgeMeshTranslate(Mesh* _in_mesh, vec3 _in_translation);

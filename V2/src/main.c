@@ -38,22 +38,52 @@ int main (__attribute__((unused)) int argc, __attribute__((unused)) char** argv)
         {1.0f, 1.0f, 1.0f},
     };
 
-    Vertex base_vertices[4] =
+    Vertex base_vertices[] =
     {
         { 0.0f, 0.5f, 0.0f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f },
         { 0.5f, 0.5f, 0.0f,  1.0f, 1.0f,  1.0f, 0.0f, 0.0f },
         { 0.5f, 0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f },
-        { 0.0f, 0.0f, 0.0f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f }
+        { 0.0f, 0.0f, 0.0f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+
+        { 0.0f, 0.5f,-0.5f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.5f, 0.5f,-0.5f,  1.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.5f, 0.0f,-0.5f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f,-0.5f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+
+        { 0.0f, 0.5f,-0.5f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.5f, 0.0f,  1.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f,-0.5f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+
+        { 0.5f, 0.5f,-0.5f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.5f, 0.5f, 0.0f,  1.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.5f, 0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+        { 0.5f, 0.0f,-0.5f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+
+        { 0.5f, 0.5f,-0.5f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.5f, 0.5f, 0.0f,  1.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.5f, 0.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.5f,-0.5f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+
+        { 0.5f, 0.0f,-0.5f,  0.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.5f, 0.0f, 0.0f,  1.0f, 1.0f,  1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 0.0f,  1.0f, 0.0f,  1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f,-0.5f,  0.0f, 0.0f,  1.0f, 0.0f, 0.0f },
     };
 
-    unsigned int base_indices[6] =
+    unsigned int base_indices[] =
     {
-        0, 1, 2, 2, 3, 0
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4,
+        8, 9, 10, 10, 11, 8,
+        12, 13, 14, 14, 15, 12,
+        16, 17, 18, 18, 19, 16,
+        20, 21, 22, 22, 23, 20,
     };
 
-    int width = 20;
-    int height = 20;
-    int depth = 2;
+    int width =  10;
+    int height = 10;
+    int depth =  10;
     int n_mesh = width * height * depth;
     
     Mesh** meshes;
@@ -62,19 +92,17 @@ int main (__attribute__((unused)) int argc, __attribute__((unused)) char** argv)
     for (int i = 0; i < n_mesh; i++)
     {
 
-        vec3 *color = colors + ((i / 4) % 7);
-        for (int j = 0; j < 4; j++)
+        for (int j = 0; j < 4 * 6; j++)
         {
+            vec3 *color = colors + ((j / 4) % 7);
             base_vertices[j].r = (*color)[0];
             base_vertices[j].g = (*color)[1];
             base_vertices[j].b = (*color)[2];
         }
 
 
-        mgeMeshInit(base_vertices, base_indices, 4, 6, meshes + i, NULL);
+        mgeMeshInit(0, base_vertices, base_indices, 4 * 6, 6 * 6, meshes + i, NULL);
         mgeMeshTranslate(meshes[i], (vec3) { 1.0f * (i % width), 1.0f * ((i % (width * height)) / height), 1.0f * (i / (width * height)) });
-        //mgeMeshRotate(meshes[i], 90.0f, (vec3) { 0.0f, 1.0f, 0.0f });
-        //mgeMeshScale(meshes[i], (vec3) { 1.0f, 2.0f, 1.0f });
     }
 
     Shader* shader;
@@ -121,14 +149,32 @@ int main (__attribute__((unused)) int argc, __attribute__((unused)) char** argv)
         return (EXIT_FAILURE);
     }
 
+    mgeRendererSetStatic(renderer, 0, 1);
+    mgeRendererSetStatic(renderer, 1, 1);
+    mgeRendererSetStatic(renderer, 2, 1);
+    mgeRendererSetStatic(renderer, 3, 1);
+    mgeRendererSetStatic(renderer, 4, 1);
+    mgeRendererSetStatic(renderer, 5, 1);
+    mgeRendererSetStatic(renderer, 6, 1);
+
     mgeRendererSetBatchShader(renderer, 0, shader);
     mgeRendererSetBatchShader(renderer, 1, shader);
+    mgeRendererSetBatchShader(renderer, 2, shader);
+    mgeRendererSetBatchShader(renderer, 3, shader);
+    mgeRendererSetBatchShader(renderer, 4, shader);
+    mgeRendererSetBatchShader(renderer, 5, shader);
+    mgeRendererSetBatchShader(renderer, 6, shader);
+
+    for (int i = 0; i < n_mesh; i++)
+    {
+        mgeRendererPushMesh(renderer, 1, meshes[i]);
+    }
 
     mgeContextShouldClose(context, &context_should_close);
 
     // Time
 
-    double fps_limit  = 1.0 / 60.0;
+    double fps_limit  = 1.0 / 120.0;
     double last_update = 0.0;
     double last_frame  = 0.0;
 
@@ -142,9 +188,6 @@ int main (__attribute__((unused)) int argc, __attribute__((unused)) char** argv)
 
     glfwGetCursorPos(context->window, pos, pos + 1);
     glfwGetCursorPos(context->window, last_pos, last_pos + 1);
-
-    float yaw   = -90.0f;
-    float pitch = 0.0f;
 
     const float camera_speed = 10.0f;
 
@@ -164,42 +207,18 @@ int main (__attribute__((unused)) int argc, __attribute__((unused)) char** argv)
         /* UPDATE BIT */
 
         if (glfwGetKey(context->window, GLFW_KEY_W) == GLFW_PRESS)
-        {
-            vec3 temp;
-            glm_vec3_mul((vec3) {camera_speed * delta_time, camera_speed * delta_time, camera_speed * delta_time}, renderer->camera_front, temp);
-
-            glm_vec3_add(renderer->camera_position, temp, renderer->camera_position);
-        }
+            mgeCameraMoveFromFront(renderer->camera, (vec3) { camera_speed * delta_time, camera_speed * delta_time, camera_speed * delta_time });
 
         if (glfwGetKey(context->window, GLFW_KEY_S) == GLFW_PRESS)
-        {
-            vec3 temp;
-            glm_vec3_mul((vec3) {camera_speed * -delta_time, camera_speed * -delta_time, camera_speed * -delta_time}, renderer->camera_front, temp);
+            mgeCameraMoveFromFront(renderer->camera, (vec3) { camera_speed *-delta_time, camera_speed *-delta_time, camera_speed *-delta_time });
 
-            glm_vec3_add(renderer->camera_position, temp, renderer->camera_position);
-        }
 
         if (glfwGetKey(context->window, GLFW_KEY_A) == GLFW_PRESS)
-        {
-            vec3 temp;
-
-            glm_vec3_cross(renderer->camera_front, renderer->camera_up, temp);
-            glm_vec3_normalize(temp);
-            glm_vec3_mul(temp, (vec3) {camera_speed * -delta_time, camera_speed * -delta_time, camera_speed * -delta_time}, temp);
-
-            glm_vec3_add(renderer->camera_position, temp, renderer->camera_position);
-        }
+            mgeCameraMoveFromRight(renderer->camera, (vec3) { camera_speed *-delta_time, camera_speed *-delta_time, camera_speed *-delta_time });
 
         if (glfwGetKey(context->window, GLFW_KEY_D) == GLFW_PRESS)
-        {
-            vec3 temp;
+            mgeCameraMoveFromRight(renderer->camera, (vec3) { camera_speed * delta_time, camera_speed * delta_time, camera_speed * delta_time });
 
-            glm_vec3_cross(renderer->camera_front, renderer->camera_up, temp);
-            glm_vec3_normalize(temp);
-            glm_vec3_mul(temp, (vec3) {camera_speed * delta_time, camera_speed * delta_time, camera_speed * delta_time}, temp);
-
-            glm_vec3_add(renderer->camera_position, temp, renderer->camera_position);
-        }
 
         if (glfwGetKey(context->window, GLFW_KEY_SPACE) == GLFW_PRESS)
         {
@@ -224,39 +243,22 @@ int main (__attribute__((unused)) int argc, __attribute__((unused)) char** argv)
             pitch = -89.0f;*/
 
         if (glfwGetKey(context->window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        {
-            yaw += (float) delta_time * -camera_speed * 8.0f;
-        }
+            mgeCameraLook(renderer->camera, (float) delta_time * -camera_speed * 8.0f, 0.0f);
 
         if (glfwGetKey(context->window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        {
-            yaw += (float) delta_time *  camera_speed * 8.0f;
-        }
+            mgeCameraLook(renderer->camera, (float) delta_time *  camera_speed * 8.0f, 0.0f);
 
         if (glfwGetKey(context->window, GLFW_KEY_UP) == GLFW_PRESS)
-        {
-            pitch += (float) delta_time *  camera_speed * 8.0f;
-        }
+            mgeCameraLook(renderer->camera, 0.0f, (float) delta_time * camera_speed * 8.0f);
 
         if (glfwGetKey(context->window, GLFW_KEY_DOWN) == GLFW_PRESS)
-        {
-            pitch += (float) delta_time * -camera_speed * 8.0f;
-        }
-
-        renderer->camera_front[0] = cos(yaw * (3.14f / 180.0f)) * cos(pitch * (3.14f / 180.0f));
-        renderer->camera_front[1] = sin(pitch * (3.14f / 180.0f));
-        renderer->camera_front[2] = sin(yaw * (3.14f / 180.0f)) * cos(pitch * (3.14f / 180.0f));
-
-        glm_normalize(renderer->camera_front);
+            mgeCameraLook(renderer->camera, 0.0f, (float) delta_time *-camera_speed * 8.0f);
 
         /* RENDER BIT */
 
         if (now - last_frame >= fps_limit)
         {
-            glClear(GL_COLOR_BUFFER_BIT);
-
-            for (int i = 0; i < n_mesh; i++)
-                mgeRendererPushMesh(renderer, i / (width * height), meshes[i]);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             mgeRender(renderer);
 

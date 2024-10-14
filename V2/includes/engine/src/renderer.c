@@ -16,6 +16,8 @@ int mgeBatchInit(int _in_batch_id, Batch** _out_batch)
     }
 
     (*_out_batch)->batch_id = _in_batch_id;
+
+    (*_out_batch)->persistent = 0;
     (*_out_batch)->shader = NULL;
 
     (*_out_batch)->mesh_max_count = 0;
@@ -37,10 +39,10 @@ int mgeBatchInit(int _in_batch_id, Batch** _out_batch)
     // since at this point, _out_batch is initialized, we don't do error handling
     mgeBatchBindBuffers(*_out_batch);
 
-    glNamedBufferData((*_out_batch)->vbo, 1, NULL, GL_STREAM_DRAW);
-    glNamedBufferData((*_out_batch)->ebo, 1, NULL, GL_STREAM_DRAW);
-    glNamedBufferData((*_out_batch)->dibo, 1, NULL, GL_STREAM_DRAW);
-    glNamedBufferData((*_out_batch)->matrix_ssbo, 1, NULL, GL_STREAM_DRAW);
+    glNamedBufferData((*_out_batch)->vbo, 1, NULL, GL_DYNAMIC_DRAW);
+    glNamedBufferData((*_out_batch)->ebo, 1, NULL, GL_DYNAMIC_DRAW);
+    glNamedBufferData((*_out_batch)->dibo, 1, NULL, GL_DYNAMIC_DRAW);
+    glNamedBufferData((*_out_batch)->matrix_ssbo, 1, NULL, GL_DYNAMIC_DRAW);
 
     // TODO : Allow custom vertex
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(0));
@@ -123,8 +125,13 @@ int mgeBatchResize(Batch* _in_batch, int _in_mesh_count, int _in_vertex_count, i
     void* old_dibo_data = NULL;
     void* old_matrix_ssbo_data = NULL;
 
+    // TODO : There is actually undefined behavior here,
+    // If I get old data with old size into an old size container then fuck me I guess ?
+    // Because the data packed next to it is not mine and therefore i'm shit
+
     if (_in_batch->mesh_count != 0)
     {
+
         old_vbo_data = glMapNamedBuffer(_in_batch->vbo, GL_READ_WRITE);
         old_ebo_data = glMapNamedBuffer(_in_batch->ebo, GL_READ_WRITE);
         old_dibo_data = glMapNamedBuffer(_in_batch->dibo, GL_READ_WRITE);
@@ -153,10 +160,17 @@ int mgeBatchResize(Batch* _in_batch, int _in_mesh_count, int _in_vertex_count, i
     _in_batch->vertex_max_count += _in_vertex_count;
     _in_batch->index_max_count += _in_index_count;
 
-    glNamedBufferData(_in_batch->vbo, (_in_batch->vertex_count + _in_vertex_count) * sizeof(Vertex), old_vbo_data, GL_STREAM_DRAW);
-    glNamedBufferData(_in_batch->ebo, (_in_batch->index_count + _in_index_count) * sizeof(int), old_ebo_data, GL_STREAM_DRAW);
-    glNamedBufferData(_in_batch->dibo, _in_batch->mesh_max_count * sizeof(DrawCommand), old_dibo_data, GL_STREAM_DRAW);
-    glNamedBufferData(_in_batch->matrix_ssbo, _in_batch->mesh_max_count * sizeof(mat4), old_matrix_ssbo_data, GL_STREAM_DRAW);
+    glNamedBufferData(_in_batch->vbo, _in_batch->vertex_max_count * sizeof(Vertex), NULL, GL_DYNAMIC_DRAW);
+    glNamedBufferSubData(_in_batch->vbo, 0, _in_batch->vertex_count * sizeof(Vertex), old_vbo_data);
+
+    glNamedBufferData(_in_batch->ebo, _in_batch->index_max_count * sizeof(int), NULL, GL_DYNAMIC_DRAW);
+    glNamedBufferSubData(_in_batch->ebo, 0, _in_batch->index_count * sizeof(int), old_ebo_data);
+
+    glNamedBufferData(_in_batch->dibo, _in_batch->mesh_max_count * sizeof(DrawCommand), NULL, GL_DYNAMIC_DRAW);
+    glNamedBufferSubData(_in_batch->dibo, 0, _in_batch->mesh_count * sizeof(DrawCommand), old_dibo_data);
+
+    glNamedBufferData(_in_batch->matrix_ssbo, _in_batch->mesh_max_count * sizeof(mat4), NULL, GL_DYNAMIC_DRAW);
+    glNamedBufferSubData(_in_batch->matrix_ssbo, 0, _in_batch->mesh_count * sizeof(mat4), old_matrix_ssbo_data);
 
     return (1);
 }
@@ -171,12 +185,12 @@ int mgeBatchPushMesh(Batch* _in_batch, Mesh* _in_mesh)
 
     if (!_in_mesh)
     {
-        printf("%s(%s) : Mesh was empty.\n", __func__, __FILE__);
+        printf("%s(%s) : Mesh is NULL.\n", __func__, __FILE__);
         return (0);
     }
 
-    if (_in_batch->vertex_count + _in_batch->vertex_count >= _in_batch->vertex_max_count || 
-        _in_batch->index_count + _in_batch->index_count >= _in_batch->index_max_count)
+    if (_in_batch->vertex_count + _in_mesh->vertex_count >= _in_batch->vertex_max_count || 
+        _in_batch->index_count + _in_mesh->index_count >= _in_batch->index_max_count)
 
     {
         if (!mgeBatchResize(_in_batch, 1, _in_mesh->vertex_count, _in_mesh->index_count))
@@ -233,9 +247,12 @@ int mgeBatchReset(Batch* _in_batch)
         return (0);
     }
 
-    _in_batch->mesh_count = 0;
-    _in_batch->vertex_count = 0;
-    _in_batch->index_count = 0;
+    if (!_in_batch->persistent)
+    {
+        _in_batch->mesh_count = 0;
+        _in_batch->vertex_count = 0;
+        _in_batch->index_count = 0;
+    }
 
     return (1);
 }
@@ -272,12 +289,13 @@ int mgeRendererInit(Renderer** _out_renderer)
     // rounded value of 45° in radians
     glm_perspective(0.785398f, 1.0f, 0.1f, 100.0f, (*_out_renderer)->projection);
 
-    glm_vec3_copy((vec3) { 0.0f, 0.0f, 3.0f }, (*_out_renderer)->camera_position );
-    glm_vec3_copy((vec3) { 0.0f, 0.0f, -1.0f }, (*_out_renderer)->camera_front );
-    glm_vec3_copy((vec3) { 0.0f, 1.0f, 0.0f }, (*_out_renderer)->camera_up );
-
-    glm_mat4_identity((*_out_renderer)->view);
-    glm_translate((*_out_renderer)->view, (vec3) {0.0f, 0.0f, -3.0f});
+    if (!mgeCameraInit(&((*_out_renderer)->camera), (vec3) { 0.0f, 0.0f, 3.0f }))
+    {
+        if ((*_out_renderer)->atlas) mgeTextureObjectFree((*_out_renderer)->atlas);
+        free(*_out_renderer);
+        printf("%s(%s) : Camera failed to initialized, aborting.\n", __func__, __FILE__);
+        return (0);
+    }
 
     return (1);
 }
@@ -295,12 +313,15 @@ int mgeRendererFree(Renderer* _in_renderer)
         mgeBatchFree(_in_renderer->batches[i]);
     }
 
+    mgeTextureObjectFree(_in_renderer->atlas);
+    mgeCameraFree(_in_renderer->camera);
+
     free(_in_renderer);
 
     return (1);
 }
 
-int mgeAddTexture(Renderer* _in_renderer, Texture2D* _in_texture)
+int mgeRendererAddTexture(Renderer* _in_renderer, Texture2D* _in_texture)
 {
     if (!_in_renderer)
     {
@@ -341,7 +362,7 @@ int mgeAddTexture(Renderer* _in_renderer, Texture2D* _in_texture)
     return (1);
 }
 
-int mgeCreateAtlas(Renderer* _in_renderer)
+int mgeRendererCreateAtlas(Renderer* _in_renderer)
 {
     if (!_in_renderer->atlas)
     {
@@ -350,6 +371,36 @@ int mgeCreateAtlas(Renderer* _in_renderer)
     }
 
 
+
+    return (1);
+}
+
+int mgeRendererSetStatic(Renderer* _in_renderer, int _in_batch_id, int _in_persist)
+{
+    if (!_in_renderer)
+    {
+        printf("%s(%s) : Renderer is NULL.\n", __func__, __FILE__);
+        return (0);
+    }
+
+    if (_in_batch_id < 0 || _in_batch_id >= MGE_BATCH_MAX_COUNT)
+    {
+        printf("%s(%s) : Invalid index : %d.\n", __func__, __FILE__, _in_batch_id);
+        return (0);
+    }
+
+    if (!_in_renderer->batches[_in_batch_id])
+    {
+        if (!mgeBatchInit(_in_batch_id, _in_renderer->batches +_in_batch_id))
+        {
+            printf("%s(%s) : Couldn't create a new batch, aborting.\n", __func__, __FILE__);
+            return (0);
+        }
+
+        _in_renderer->batch_count++;
+    }
+
+    _in_renderer->batches[_in_batch_id]->persistent = _in_persist;
 
     return (1);
 }
@@ -442,10 +493,11 @@ int mgeRender(Renderer* _in_renderer)
 
     mat4 view;
 
-    vec3 pos_front_sum;
-    glm_vec3_add(_in_renderer->camera_front, _in_renderer->camera_position, pos_front_sum);
-
-    glm_lookat(_in_renderer->camera_position, pos_front_sum, _in_renderer->camera_up, view);
+    if (!mgeCameraGetView(_in_renderer->camera, view))
+    {
+        printf("%s(%s) : Couldn't create camera view, aborting.\n", __func__, __FILE__);
+        return (0);
+    }
 
     for (int i = 0; i < _in_renderer->batch_count; i++)
     {

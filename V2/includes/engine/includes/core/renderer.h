@@ -1,6 +1,7 @@
 #ifndef H_MGE_RENDERER
 #define H_MGE_RENDERER
 
+#include "core/camera.h"
 #include "core/mesh.h"
 #include "core/shader.h"
 
@@ -26,6 +27,8 @@ typedef struct
 typedef struct
 {
     int batch_id; // The unique id of the batch
+
+    int persistent; // Does the batch "flush" its data after each render call
 
     Shader* shader; // Shader used by the entire batch
     
@@ -70,7 +73,7 @@ typedef struct
     int batch_count;
 
     mat4 projection;
-    mat4 view;
+    //mat4 view;
 
     Texture2D** textures;
     int textures_capacity;
@@ -78,19 +81,17 @@ typedef struct
 
     TextureObject* atlas;
 
-    // TODO : Add a camera field
-    vec3 camera_up;
-    vec3 camera_front;
-    vec3 camera_position;
+    Camera* camera;
 } Renderer;
 
 // Functions
 int mgeRendererInit(Renderer** _out_renderer);
 int mgeRendererFree(Renderer* _in_renderer);
 
-int mgeAddTexture(Renderer* _in_renderer, Texture2D* _in_texture);
-int mgeCreateAtlas(Renderer* _in_renderer);
+int mgeRendererAddTexture(Renderer* _in_renderer, Texture2D* _in_texture);
+int mgeRendererCreateAtlas(Renderer* _in_renderer);
 
+int mgeRendererSetStatic(Renderer* _in_renderer, int _in_batch_id, int _in_persist);
 int mgeRendererSetBatchShader(Renderer* _in_renderer, int _in_batch_id, Shader* _in_shader);
 
 int mgeRendererPushMesh(Renderer* _in_renderer, int _in_batch_id, Mesh* _in_mesh);
